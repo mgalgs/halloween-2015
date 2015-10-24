@@ -34,10 +34,10 @@ class Monster():
         self._servo.set_servo(self._gpios['servo'], n)
 
     def close_door(self):
-        self.set_servo(1100)
+        self.set_servo(1200)
 
     def open_door(self):
-        self.set_servo(1900)
+        self.set_servo(1800)
 
     def toggle_door(self, time_open=.8):
         self.open_door()
