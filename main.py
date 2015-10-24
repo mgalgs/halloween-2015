@@ -2,6 +2,7 @@
 
 import sys
 import time
+import threading
 from RPIO import PWM
 import RPIO as GPIO
 
@@ -43,6 +44,17 @@ class Monster():
         time.sleep(time_open)
         self.close_door()
 
+    def ball_and_door(self):
+        ball_thread = threading.Thread(target=self.fire_ball)
+        door_thread = threading.Thread(target=self.toggle_door)
+
+        door_thread.start()
+        time.sleep(.5)
+        ball_thread.start()
+
+        ball_thread.join()
+        door_thread.join()
+
     def sayhi(self, sleep_s=0.5, reps=5):
         for i in range(reps):
             self.close_door()
@@ -53,7 +65,8 @@ class Monster():
 
 if __name__ == "__main__":
     monster = Monster()
-    commands = ['sayhi', 'close_door', 'open_door', 'toggle_door', 'fire_ball']
+    commands = ['sayhi', 'close_door', 'open_door', 'toggle_door', 'fire_ball',
+                'ball_and_door']
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
         print 'Usage: main.py <command>'
         print
