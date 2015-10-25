@@ -19,16 +19,17 @@ class Monster():
         }
         GPIO.setup(self._gpios['solenoid'], GPIO.OUT)
 
-    def set_solenoid(self, state):
-        if not isinstance(state, bool):
-            raise ValueError("State must be a bool, but we got:" + type(state))
-        GPIO.output(self._gpios['solenoid'], state)
+    def activate_solenoid(self):
+        GPIO.output(self._gpios['solenoid'], True)
+
+    def deactivate_solenoid(self):
+        GPIO.output(self._gpios['solenoid'], False)
 
     def fire_ball(self, active_time=.5):
         """Activate the solenoid for `active_time' seconds."""
-        self.set_solenoid(True)
+        self.activate_solenoid()
         time.sleep(active_time)
-        self.set_solenoid(False)
+        self.deactivate_solenoid()
 
     def set_servo(self, n):
         self._servo.set_servo(self._gpios['servo'], n)
