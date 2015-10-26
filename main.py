@@ -104,6 +104,7 @@ class Monster():
         print 'Distance: ', self.measure_distance(), ' meters'
 
     def monitor_distance(self, iters=10):
+        iters = int(iters)      # we pass strings from the command line below...
         for i in xrange(iters):
             self.print_distance()
             sys.stdin.flush()
@@ -119,7 +120,7 @@ class Monster():
 if __name__ == "__main__":
     commands = ['sayhi', 'close_door', 'open_door', 'toggle_door', 'fire_ball',
                 'ball_and_door', 'print_distance', 'monitor_distance']
-    if len(sys.argv) != 2 or sys.argv[1] not in commands:
+    if len(sys.argv) < 2 or sys.argv[1] not in commands:
         print 'Usage: main.py <command>'
         print
         print 'where command is one of:'
@@ -127,7 +128,10 @@ if __name__ == "__main__":
         sys.exit(1)
     cmd = sys.argv[1]
     monster = Monster()
-    getattr(monster, cmd)()
+    if len(sys.argv) > 2:
+        getattr(monster, cmd)(*sys.argv[2:])
+    else:
+        getattr(monster, cmd)()
 
     time.sleep(1)
     GPIO.cleanup()
