@@ -13,8 +13,8 @@
 #                uploading to the AVR and the interface where this hardware
 #                is connected. We recommend that you leave it undefined and
 #                add settings like this to your ~/.avrduderc file:
-#                   default_programmer = "stk500v2"
-#                   default_serial = "avrdoper"
+#                   default_programmer = "stk500v2";
+#                   default_serial = "avrdoper";
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
 DEVICE     = atmega8
