@@ -6,28 +6,42 @@ import threading
 import subprocess
 from RPIO import PWM
 import RPIO as GPIO
+from smbus import SMBus
 
 
 class Monster():
-    """All GPIOs are BCM GPIO numbers.
+    """Monster class.  Should only be used with a context manager!
+
+    All GPIOs are BCM GPIO numbers.
     """
 
-    SERVO_CMD_OPEN = "1"
-    SERVO_CMD_CLOSE = "2"
+    I2C_BUS_NUM = 0
+    SERVO_I2C_ADDR = 0xa
+    SERVO_CMD_OPEN = 1
+    SERVO_CMD_CLOSE = 2
 
     def __init__(self, solenoid_gpio_num=17,
                  echo_trigger_gpio_num=24, echo_gpio_num=25):
-        PWM.set_loglevel(PWM.LOG_LEVEL_ERRORS)
         self._gpios = {
             'solenoid': solenoid_gpio_num,
             'echo_trigger': echo_trigger_gpio_num,
             'echo': echo_gpio_num,
         }
-        self.close_door()       # to make sure servo is init'd
+        self._rangefinder_settled = False
+
+    def __enter__(self):
+        PWM.set_loglevel(PWM.LOG_LEVEL_ERRORS)
         GPIO.setup(self._gpios['solenoid'], GPIO.OUT)
         GPIO.setup(self._gpios['echo_trigger'], GPIO.OUT)
         GPIO.setup(self._gpios['echo'], GPIO.IN)
-        self._rangefinder_settled = False
+        self._i2c_bus = SMBus()
+        self._i2c_bus.open(Monster.I2C_BUS_NUM)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._cm_active = False
+        self._i2c_bus.close()
+        GPIO.cleanup()
 
     def activate_solenoid(self):
         GPIO.output(self._gpios['solenoid'], True)
@@ -42,18 +56,12 @@ class Monster():
         self.deactivate_solenoid()
 
     def close_door(self):
-        try:
-            subprocess.check_call(["i2cset", "-y", "0", "0xa",
-                                   Monster.SERVO_CMD_CLOSE])
-        except subprocess.CalledProcessError as e:
-            print "Failed with", e.returncode
+        self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
+                                 Monster.SERVO_CMD_CLOSE)
 
     def open_door(self):
-        try:
-            subprocess.check_call(["i2cset", "-y", "0", "0xa",
-                                   Monster.SERVO_CMD_OPEN])
-        except subprocess.CalledProcessError as e:
-            print "Failed with", e.returncode
+        self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
+                                 Monster.SERVO_CMD_OPEN)
 
     def toggle_door(self, time_open=.8):
         self.open_door()
@@ -135,11 +143,10 @@ if __name__ == "__main__":
         print '\n'.join(['  - ' + c for c in commands])
         sys.exit(1)
     cmd = sys.argv[1]
-    monster = Monster()
-    if len(sys.argv) > 2:
-        getattr(monster, cmd)(*sys.argv[2:])
-    else:
-        getattr(monster, cmd)()
+    with Monster() as monster:
+        if len(sys.argv) > 2:
+            getattr(monster, cmd)(*sys.argv[2:])
+        else:
+            getattr(monster, cmd)()
 
     time.sleep(1)
-    GPIO.cleanup()
