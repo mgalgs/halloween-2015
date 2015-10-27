@@ -122,9 +122,13 @@ static uint8_t i2c_get_byte(void)
         while (!(TWCR & (1 << TWINT)))
             ;
         /* read the status */
-        status = (TWSR & 0x11111000) >> 3;
+        status = (TWSR & 0xf8);
         if (status == 0x80)
+            /* we have data! break and read it. */
             break;
+        if (status == 0x60)
+            /* we got our address. keep looping for data... */
+            TWCR = (1 << TWEN) | (1 << TWINT);
         led_toggle();
     }
 
