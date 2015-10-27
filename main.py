@@ -3,6 +3,7 @@
 import sys
 import time
 import threading
+import subprocess
 from RPIO import PWM
 import RPIO as GPIO
 
@@ -10,6 +11,10 @@ import RPIO as GPIO
 class Monster():
     """All GPIOs are BCM GPIO numbers.
     """
+
+    SERVO_CMD_OPEN = "1"
+    SERVO_CMD_CLOSE = "2"
+
     def __init__(self, solenoid_gpio_num=17,
                  echo_trigger_gpio_num=24, echo_gpio_num=25):
         PWM.set_loglevel(PWM.LOG_LEVEL_ERRORS)
@@ -36,14 +41,19 @@ class Monster():
         time.sleep(active_time)
         self.deactivate_solenoid()
 
-    def set_servo(self, n):
-        pass
-
     def close_door(self):
-        pass
+        try:
+            subprocess.check_call(["i2cset", "-y", "0", "0xa",
+                                   Monster.SERVO_CMD_CLOSE])
+        except subprocess.CalledProcessError as e:
+            print "Failed with", e.returncode
 
     def open_door(self):
-        pass
+        try:
+            subprocess.check_call(["i2cset", "-y", "0", "0xa",
+                                   Monster.SERVO_CMD_OPEN])
+        except subprocess.CalledProcessError as e:
+            print "Failed with", e.returncode
 
     def toggle_door(self, time_open=.8):
         self.open_door()
