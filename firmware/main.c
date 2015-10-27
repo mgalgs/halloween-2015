@@ -69,6 +69,11 @@ static void led_off(void)
     PORTD &= ~(1 << 4);
 }
 
+static void led_toggle(void)
+{
+    PORTD |= (~((PORTD & (1 << 4)))) & (1 << 4);
+}
+
 static void attention(void)
 {
     uint8_t i;
@@ -81,19 +86,77 @@ static void attention(void)
     }
 }
 
+#define MY_TWI_ADDR 0xa
+#define TWA_SHIFT 1
+
+static void i2c_init(void)
+{
+    /* prescaler = 1 (see next) */
+    TWSR = 0;
+    /*
+     * scl_freq = cpu_hz/(16 + 2(TWBR)4^TWSR)
+     *
+     * and cpu_hz=16MHz, TWSR=0
+     *
+     * So with TWBR=12, we get scl_freq=400kHz
+     */
+    TWBR = 12;
+
+    /* set slave address */
+    TWAR = MY_TWI_ADDR << TWA_SHIFT;
+
+    /* enable two-wire with acks enabled */
+    TWCR = (1 << TWEA) | (1 << TWEN);
+    /*
+     * NOTE: we're not enabling TWI interrupts (for simplicity) so we'll
+     * need to poll TWCR.TWINT later to wait for data.
+     */
+}
+
+static uint8_t i2c_get_byte(void)
+{
+    uint8_t status, data;
+
+    for (;;) {
+        /* wait for data */
+        while (!(TWCR & (1 << TWINT)))
+            ;
+        /* read the status */
+        status = (TWSR & 0x11111000) >> 3;
+        if (status == 0x80)
+            break;
+        led_toggle();
+    }
+
+    /* read the received data */
+    data = TWDR;
+    /* clear the interrupt */
+    TWCR = (1 << TWEN) | (1 << TWINT);
+    return data;
+}
+
 int main(void)
 {
+    i2c_init();
     led_init();
     servo_init();
     attention();
     servo_set_degrees(0);
 
     for(;;) {
-        sitfor(50);
-        led_on();
-        sitfor(50);
-        led_off();
+        uint8_t data = i2c_get_byte();
+
+        while (data--) {
+            sitfor(10);
+            led_toggle();
+        }
     }
 
     return 0;   /* never reached */
 }
+
+/* Local Variables: */
+/* c-file-style: "k&r" */
+/* c-basic-offset: 4 */
+/* eval: (progn (setq whitespace-style '(face trailing lines-tail empty indentation::space)) (whitespace-mode)) */
+/* End: */
