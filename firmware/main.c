@@ -170,10 +170,12 @@ int main(void)
 
         switch (data) {
         case SERVO_CMD_OPEN:
+            servo_set_degrees(0);
             blinken(2);
             sitfor(50);
             break;
         case SERVO_CMD_CLOSE:
+            servo_set_degrees(100);
             blinken(20);
             sitfor(50);
             break;
