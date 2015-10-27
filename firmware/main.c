@@ -8,7 +8,9 @@
 #include <util/delay.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <util/twi.h>
 
+#define __unused __attribute__((unused))
 
 static void led_init(void)
 {
@@ -69,21 +71,34 @@ static void led_off(void)
     PORTD &= ~(1 << 4);
 }
 
-static void led_toggle(void)
+static void __unused led_toggle(void)
 {
     PORTD |= (~((PORTD & (1 << 4)))) & (1 << 4);
 }
 
-static void attention(void)
+static void blinken(int n)
 {
     uint8_t i;
 
-    for (i = 0; i < 10; ++i) {
+    for (i = 0; i < n; ++i) {
         led_on();
         sitfor(1);
         led_off();
         sitfor(1);
     }
+}
+
+static void attention(void)
+{
+    blinken(10);
+}
+
+static __unused void send_bit(int bit)
+{
+    blinken(3);
+    if (bit)
+        led_on();
+    sitfor(50);
 }
 
 #define MY_TWI_ADDR 0xa
@@ -106,37 +121,36 @@ static void i2c_init(void)
     TWAR = MY_TWI_ADDR << TWA_SHIFT;
 
     /* enable two-wire with acks enabled */
-    TWCR = (1 << TWEA) | (1 << TWEN);
+    TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
     /*
-     * NOTE: we're not enabling TWI interrupts (for simplicity) so we'll
-     * need to poll TWCR.TWINT later to wait for data.
+     * NOTE: for simplicity, we're not enabling TWI interrupts (TWCR.TWIE)
+     * so we'll need to poll TWCR.TWINT later to wait for data.
      */
 }
 
 static uint8_t i2c_get_byte(void)
 {
-    uint8_t status, data;
-
     for (;;) {
+        uint8_t status, data;
+
         /* wait for data */
         while (!(TWCR & (1 << TWINT)))
             ;
         /* read the status */
         status = (TWSR & 0xf8);
-        if (status == 0x80)
-            /* we have data! break and read it. */
-            break;
-        if (status == 0x60)
+        if (status == TW_SR_DATA_ACK) {
+            /* we have data! */
+            data = TWDR;
+            TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
+            return data;
+        } else if (status == TW_SR_SLA_ACK) {
             /* we got our address. keep looping for data... */
-            TWCR = (1 << TWEN) | (1 << TWINT);
-        led_toggle();
+            TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
+        } else {
+            TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
+        }
     }
-
-    /* read the received data */
-    data = TWDR;
-    /* clear the interrupt */
-    TWCR = (1 << TWEN) | (1 << TWINT);
-    return data;
+    /* never reached */
 }
 
 int main(void)
@@ -151,8 +165,8 @@ int main(void)
         uint8_t data = i2c_get_byte();
 
         while (data--) {
-            sitfor(10);
-            led_toggle();
+            sitfor(30);
+            blinken(2);
         }
     }
 
