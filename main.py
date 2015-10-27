@@ -10,12 +10,10 @@ import RPIO as GPIO
 class Monster():
     """All GPIOs are BCM GPIO numbers.
     """
-    def __init__(self, servo_gpio_num=22, solenoid_gpio_num=17,
+    def __init__(self, solenoid_gpio_num=17,
                  echo_trigger_gpio_num=24, echo_gpio_num=25):
         PWM.set_loglevel(PWM.LOG_LEVEL_ERRORS)
-        self._servo = PWM.Servo()
         self._gpios = {
-            'servo': servo_gpio_num,
             'solenoid': solenoid_gpio_num,
             'echo_trigger': echo_trigger_gpio_num,
             'echo': echo_gpio_num,
@@ -39,13 +37,13 @@ class Monster():
         self.deactivate_solenoid()
 
     def set_servo(self, n):
-        self._servo.set_servo(self._gpios['servo'], n)
+        pass
 
     def close_door(self):
-        self.set_servo(1200)
+        pass
 
     def open_door(self):
-        self.set_servo(1800)
+        pass
 
     def toggle_door(self, time_open=.8):
         self.open_door()
