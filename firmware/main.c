@@ -12,6 +12,10 @@
 
 #define __unused __attribute__((unused))
 
+#define SERVO_CMD_OPEN 1
+#define SERVO_CMD_CLOSE 2
+
+
 static void led_init(void)
 {
     DDRD = 1 << 4;              /* make PD4 an output */
@@ -164,9 +168,19 @@ int main(void)
     for(;;) {
         uint8_t data = i2c_get_byte();
 
-        while (data--) {
+        switch (data) {
+        case SERVO_CMD_OPEN:
             blinken(2);
-            sitfor(30);
+            sitfor(50);
+            break;
+        case SERVO_CMD_CLOSE:
+            blinken(20);
+            sitfor(50);
+            break;
+        default:
+            blinken(100);
+            sitfor(50);
+            break;
         }
     }
 
