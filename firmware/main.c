@@ -165,8 +165,8 @@ int main(void)
         uint8_t data = i2c_get_byte();
 
         while (data--) {
-            sitfor(30);
             blinken(2);
+            sitfor(30);
         }
     }
 
