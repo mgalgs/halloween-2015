@@ -23,7 +23,6 @@ CLOCK      = 16000000
 # PROGRAMMER = #-c stk500v2 -P avrdoper
 # PROGRAMMER = -c buspirate -P /dev/tty.usbserial-A700e7cb
 OBJECTS    = main.o
-FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 # original fuse value read from device:
 #   avrdude: Device signature = 0x1e9307
 #   avrdude: safemode: lfuse reads as FF
@@ -55,6 +54,29 @@ FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 #
 # For computing fuse byte values for other devices and options see
 # the fuse bit calculator at http://www.engbedded.com/fusecalc/
+
+# FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
+
+
+# 16 MHz external crystal oscillator
+# Fuse high byte:
+# 0xc9 = 1 1 0 0   1 0 0 1 <-- BOOTRST (boot reset vector at 0x0000)
+#        ^ ^ ^ ^   ^ ^ ^------ BOOTSZ0
+#        | | | |   | +-------- BOOTSZ1
+#        | | | |   +---------- EESAVE (set to 0 to preserve EEPROM over chip erase)
+#        | | | +-------------- CKOPT (use 16MHz external crystal)
+#        | | +---------------- SPIEN (if set to 1, serial programming is disabled)
+#        | +------------------ WDTON (if set to 0, watchdog is always on)
+#        +-------------------- RSTDISBL (if set to 0, RESET pin is disabled)
+# Fuse low byte:
+# 0xbf = 1 0 1 1   1 1 1 1
+#        ^ ^ \ /   \--+--/
+#        | |  |       +------- CKSEL 3..0 (16M external crystal, slowly rising power)
+#        | |  +--------------- SUT 1..0 (slowly rising power)
+#        | +------------------ BODEN (if 0, brown-out detector is enabled)
+#        +-------------------- BODLEVEL (if 0: 4V, if 1: 2.7V)
+FUSES      = -U hfuse:w:0xc9:m -U lfuse:w:0xbf:m
+
 
 
 # Tune the lines below only if you know what you are doing:
