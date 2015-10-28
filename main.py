@@ -9,6 +9,31 @@ import RPIO as GPIO
 from smbus import SMBus
 
 
+class RefCount():
+    def __init__(self):
+        self._cnt = 0
+        self._lock = threading.Lock()
+
+    def __enter__(self):
+        self.inc()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.dec()
+
+    def inc(self):
+        with self._lock:
+            self._cnt += 1
+
+    def dec(self):
+        with self._lock:
+            self._cnt -= 1
+
+    def cnt(self):
+        with self._lock:
+            return self._cnt
+
+
 class Monster():
     """Monster class.  Should only be used with a context manager!
 
@@ -20,6 +45,8 @@ class Monster():
     SERVO_CMD_OPEN = 1
     SERVO_CMD_CLOSE = 2
 
+    DISTANCE_UPDATE_SECONDS = .2
+
     def __init__(self, solenoid_gpio_num=17,
                  echo_trigger_gpio_num=24, echo_gpio_num=25):
         self._gpios = {
@@ -28,7 +55,9 @@ class Monster():
             'echo': echo_gpio_num,
         }
         self._rangefinder_settled = False
-        self._evt = threading.Condition()
+        self._distance_lock = threading.Lock()
+        self._distance = 999999999
+        self._io_refcnt = RefCount()
 
     def __enter__(self):
         PWM.set_loglevel(PWM.LOG_LEVEL_ERRORS)
@@ -57,38 +86,45 @@ class Monster():
         time.sleep(active_time)
         self.deactivate_solenoid()
 
-    def close_door(self, max_iters=3):
+    def i2c_write(self, cmd, max_iters):
         for i in range(max_iters):
             try:
-                self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
-                                         Monster.SERVO_CMD_CLOSE)
+                self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR, cmd)
                 return
             except IOError:
                 print "i2c bus contention..."
                 time.sleep(.5)
                 pass
-        print "Couldn't send door close command"
+        print "Couldn't send command:", cmd
+
+    def close_door(self, max_iters=3):
+        self.i2c_write(Monster.SERVO_CMD_CLOSE, max_iters)
 
     def open_door(self, max_iters=3):
-        for i in range(max_iters):
-            try:
-                self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
-                                         Monster.SERVO_CMD_OPEN)
-                return
-            except IOError:
-                print "i2c bus contention..."
-                time.sleep(.5)
-                pass
-        print "Couldn't send door open command"
+        self.i2c_write(Monster.SERVO_CMD_OPEN, max_iters)
 
     def toggle_door(self, time_open=.8):
         self.open_door()
         time.sleep(time_open)
         self.close_door()
 
+    def fire_ball_drop_cnt(self):
+        self.fire_ball()
+        self._io_refcnt.dec()
+
+    def toggle_door_drop_cnt(self):
+        self.toggle_door()
+        self._io_refcnt.dec()
+
     def ball_and_door(self):
-        ball_thread = threading.Thread(target=self.fire_ball)
-        door_thread = threading.Thread(target=self.toggle_door)
+        ball_thread = threading.Thread(target=self.fire_ball_drop_cnt)
+        door_thread = threading.Thread(target=self.toggle_door_drop_cnt)
+
+        # two threads will have outstanding I/O.  Need two refcounts.  The
+        # counts will be dropped when the threads are done with their work.
+        # There must be a cleaner way of doing this but, I'm tired...
+        self._io_refcnt.inc()
+        self._io_refcnt.inc()
 
         door_thread.start()
         time.sleep(.5)
@@ -146,30 +182,48 @@ class Monster():
             self.print_distance()
             sys.stdin.flush()
 
-    def watch_distance(self, trigger_threshold_meters=.1):
+    def set_distance(self, distance):
+        with self._distance_lock:
+            self._distance = distance
+
+    def get_distance(self):
+        with self._distance_lock:
+            return self._distance
+
+    def watch_distance(self):
         while self._keep_watching:
             distance = self.measure_distance()
-            if distance < trigger_threshold_meters:
-                self._evt.acquire()
-                self._evt.notify()
-                self._evt.release()
+            self.set_distance(distance)
+            time.sleep(Monster.DISTANCE_UPDATE_SECONDS)
+        print 'done watching distance'
 
-    def monster_loop(self):
+    def monster_loop(self, iters=None, trigger_threshold_meters=.3):
+        iters = int(iters)
+        print 'running', iters if iters is not None else 'unlimited', 'iters'
         self._keep_watching = True
-        self._evt.acquire()
         dist_thread = threading.Thread(target=self.watch_distance)
-        dist_thread.daemon = True
         dist_thread.start()
         try:
+            cnt = 0
             while True:
-                self._evt.wait()
-                self.ball_and_door()
+                distance = self.get_distance()
+                if distance < trigger_threshold_meters:
+                    print 'FIRE!'
+                    self.ball_and_door()
                 time.sleep(1)
+                cnt += 1
+                if iters is not None and cnt > iters:
+                    break
         except KeyboardInterrupt:
             print "Interrupt received. Exiting loop."
-            self._keep_watching = False
-        self._evt.release()
+        self._keep_watching = False
+        print 'waiting for threads to exit...'
         dist_thread.join()
+        print 'waiting for any outstanding I/O...'
+        while self._io_refcnt.cnt() > 0:
+            print "waiting for I/O..."
+            time.sleep(1)
+        print "ok, we're outta here"
 
     def sayhi(self, sleep_s=0.5, reps=5):
         for i in xrange(reps):
