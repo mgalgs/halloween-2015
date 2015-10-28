@@ -55,13 +55,27 @@ class Monster():
         time.sleep(active_time)
         self.deactivate_solenoid()
 
-    def close_door(self):
-        self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
-                                 Monster.SERVO_CMD_CLOSE)
+    def close_door(self, max_iters=3):
+        for i in range(max_iters):
+            try:
+                self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
+                                         Monster.SERVO_CMD_CLOSE)
+                return
+            except IOError:
+                time.sleep(.5)
+                pass
+        print "Couldn't send door close command"
 
-    def open_door(self):
-        self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
-                                 Monster.SERVO_CMD_OPEN)
+    def open_door(self, max_iters=3):
+        for i in range(max_iters):
+            try:
+                self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR,
+                                         Monster.SERVO_CMD_OPEN)
+                return
+            except IOError:
+                time.sleep(.5)
+                pass
+        print "Couldn't send door open command"
 
     def toggle_door(self, time_open=.8):
         self.open_door()
