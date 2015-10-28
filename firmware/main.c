@@ -78,7 +78,7 @@ static void sitfor(uint8_t sitfor)
 
 static void led_on(void)
 {
-    PORTD = 1 << 4;
+    PORTD |= 1 << 4;
 }
 
 static void led_off(void)
@@ -88,7 +88,10 @@ static void led_off(void)
 
 static void __unused led_toggle(void)
 {
-    PORTD |= (~((PORTD & (1 << 4)))) & (1 << 4);
+    if (PORTD & (1 << 4))
+        led_off();
+    else
+        led_on();
 }
 
 static void blinken(int n)
