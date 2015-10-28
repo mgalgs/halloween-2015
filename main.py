@@ -62,6 +62,7 @@ class Monster():
                                          Monster.SERVO_CMD_CLOSE)
                 return
             except IOError:
+                print "i2c bus contention..."
                 time.sleep(.5)
                 pass
         print "Couldn't send door close command"
@@ -73,6 +74,7 @@ class Monster():
                                          Monster.SERVO_CMD_OPEN)
                 return
             except IOError:
+                print "i2c bus contention..."
                 time.sleep(.5)
                 pass
         print "Couldn't send door open command"
