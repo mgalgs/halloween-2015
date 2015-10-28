@@ -21,11 +21,13 @@ static void led_init(void)
     DDRD = 1 << 4;              /* make PD4 an output */
 }
 
+static void servo_set_degrees(uint8_t degrees);
+
 /*
  * http://www.electroons.com/electroons/servo_control.html
  * http://eliaselectronics.com/atmega-servo-tutorial/
  */
-static void servo_init(void)
+static void servo_init(uint8_t init_degrees)
 {
     /*
      * COM1A1:0 = 2 means clear OC1A on ICR1 match, non-inverting mode
@@ -43,7 +45,7 @@ static void servo_init(void)
      */
     ICR1 = 40000 - 1; // 16000000 / (8 * 50) = 320000 / 8 = 40000
 
-    OCR1A = 2000;
+    servo_set_degrees(init_degrees);
     DDRB |= (1 << PB1); // OC1A set to output
 }
 
@@ -170,9 +172,8 @@ int main(void)
 {
     i2c_init();
     led_init();
-    servo_init();
+    servo_init(180);
     attention();
-    servo_set_degrees(0);
 
     for(;;) {
         uint8_t data = i2c_get_byte();
