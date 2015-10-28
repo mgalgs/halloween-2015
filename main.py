@@ -37,6 +37,7 @@ class Monster():
         GPIO.setup(self._gpios['echo'], GPIO.IN)
         self._i2c_bus = SMBus()
         self._i2c_bus.open(Monster.I2C_BUS_NUM)
+        self.close_door()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
