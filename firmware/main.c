@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <util/twi.h>
+#include <avr/interrupt.h>
 
 #define __unused __attribute__((unused))
 
@@ -139,36 +140,48 @@ static void i2c_init(void)
     TWAR = MY_TWI_ADDR << TWA_SHIFT;
 
     /* enable two-wire with acks enabled */
-    TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
-    /*
-     * NOTE: for simplicity, we're not enabling TWI interrupts (TWCR.TWIE)
-     * so we'll need to poll TWCR.TWINT later to wait for data.
-     */
+    TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT) | (1 << TWIE);
 }
 
-static uint8_t i2c_get_byte(void)
+static void process_data(uint8_t data)
 {
-    for (;;) {
-        uint8_t status, data;
-
-        /* wait for data */
-        while (!(TWCR & (1 << TWINT)))
-            ;
-        /* read the status */
-        status = (TWSR & 0xf8);
-        if (status == TW_SR_DATA_ACK) {
-            /* we have data! */
-            data = TWDR;
-            TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
-            return data;
-        } else if (status == TW_SR_SLA_ACK) {
-            /* we got our address. keep looping for data... */
-            TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
-        } else {
-            TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
-        }
+    switch (data) {
+    case SERVO_CMD_OPEN:
+        servo_set_degrees(0);
+        blinken(2);
+        sitfor(50);
+        break;
+    case SERVO_CMD_CLOSE:
+        servo_set_degrees(180);
+        blinken(20);
+        sitfor(50);
+        break;
+    default:
+        blinken(100);
+        sitfor(50);
+        break;
     }
-    /* never reached */
+}
+
+ISR(TWI_vect)
+{
+    uint8_t status, data;
+
+    /* read the status */
+    status = (TWSR & 0xf8);
+    if (status == TW_SR_DATA_ACK) {
+        /* we have data! */
+        data = TWDR;
+        TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT) | (1 << TWIE);
+        process_data(data);
+    } else if (status == TW_SR_SLA_ACK) {
+        /* we got our address. keep waiting for data... */
+        TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT) | (1 << TWIE);
+    } else {
+        TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT) | (1 << TWIE);
+        /* might need to drop the TWINT? */
+        /* TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWIE); */
+    }
 }
 
 int main(void)
@@ -178,25 +191,12 @@ int main(void)
     servo_init(180);
     attention();
 
-    for(;;) {
-        uint8_t data = i2c_get_byte();
+    /* allow interrupts */
+    sei();
 
-        switch (data) {
-        case SERVO_CMD_OPEN:
-            servo_set_degrees(0);
-            blinken(2);
-            sitfor(50);
-            break;
-        case SERVO_CMD_CLOSE:
-            servo_set_degrees(180);
-            blinken(20);
-            sitfor(50);
-            break;
-        default:
-            blinken(100);
-            sitfor(50);
-            break;
-        }
+    for(;;) {
+        led_toggle();
+        sitfor(100);
     }
 
     return 0;   /* never reached */
