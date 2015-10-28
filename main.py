@@ -143,9 +143,9 @@ class Monster():
 
     def sayhi(self, sleep_s=0.5, reps=5):
         for i in xrange(reps):
-            self.close_door()
-            time.sleep(sleep_s)
             self.open_door()
+            time.sleep(sleep_s)
+            self.close_door()
             time.sleep(sleep_s)
 
 
