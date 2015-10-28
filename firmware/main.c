@@ -184,7 +184,7 @@ int main(void)
             sitfor(50);
             break;
         case SERVO_CMD_CLOSE:
-            servo_set_degrees(100);
+            servo_set_degrees(180);
             blinken(20);
             sitfor(50);
             break;
