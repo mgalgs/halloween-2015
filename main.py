@@ -28,6 +28,7 @@ class Monster():
             'echo': echo_gpio_num,
         }
         self._rangefinder_settled = False
+        self._evt = threading.Condition()
 
     def __enter__(self):
         PWM.set_loglevel(PWM.LOG_LEVEL_ERRORS)
@@ -96,8 +97,11 @@ class Monster():
         door_thread.join()
 
     # based on http://www.modmypi.com/blog/hc-sr04-ultrasonic-range-sensor-on-the-raspberry-pi
-    def measure_distance(self, settle_rangefinder=False):
-        """Probably should only happen in a thread due to all the sleeping"""
+    def measure_distance(self):
+        """Returns the distance (in meters) to the object being looked at.
+
+        Probably should only happen in a thread due to all the sleeping
+        """
         if not self._rangefinder_settled:
             # let the sensor settle
             GPIO.output(self._gpios['echo_trigger'], False)
@@ -141,6 +145,31 @@ class Monster():
             self.print_distance()
             sys.stdin.flush()
 
+    def watch_distance(self, trigger_threshold_meters=.1):
+        while self._keep_watching:
+            distance = self.measure_distance()
+            if distance < trigger_threshold_meters:
+                self._evt.acquire()
+                self._evt.notify()
+                self._evt.release()
+
+    def monster_loop(self):
+        self._keep_watching = True
+        self._evt.acquire()
+        dist_thread = threading.Thread(target=self.watch_distance)
+        dist_thread.daemon = True
+        dist_thread.start()
+        try:
+            while True:
+                self._evt.wait()
+                self.ball_and_door()
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print "Interrupt received. Exiting loop."
+            self._keep_watching = False
+        self._evt.release()
+        dist_thread.join()
+
     def sayhi(self, sleep_s=0.5, reps=5):
         for i in xrange(reps):
             self.open_door()
@@ -151,7 +180,8 @@ class Monster():
 
 if __name__ == "__main__":
     commands = ['sayhi', 'close_door', 'open_door', 'toggle_door', 'fire_ball',
-                'ball_and_door', 'print_distance', 'monitor_distance']
+                'ball_and_door', 'print_distance', 'monitor_distance',
+                'monster_loop']
     if len(sys.argv) < 2 or sys.argv[1] not in commands:
         print 'Usage: main.py <command>'
         print
