@@ -112,10 +112,10 @@ class Monster():
         print "I2C Contention! Couldn't send command:", cmd
 
     def close_door(self):
-        self.i2c_write(Monster.SERVO_CMD_CLOSE, 5)
+        self.i2c_write(Monster.SERVO_CMD_CLOSE, 10)
 
     def open_door(self):
-        self.i2c_write(Monster.SERVO_CMD_OPEN, 5)
+        self.i2c_write(Monster.SERVO_CMD_OPEN, 10)
 
     def toggle_door(self, time_open=.8):
         self.open_door()
