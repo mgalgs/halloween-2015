@@ -94,7 +94,7 @@ class Monster():
     def deactivate_solenoid(self):
         GPIO.output(self._gpios['solenoid'], False)
 
-    def fire_ball(self, active_time=.5):
+    def fire_ball(self, active_time=.3):
         """Activate the solenoid for `active_time' seconds."""
         self.activate_solenoid()
         time.sleep(active_time)
