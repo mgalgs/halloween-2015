@@ -5,6 +5,7 @@ import time
 import threading
 import subprocess
 import os
+import signal
 
 from RPIO import PWM
 import RPIO as GPIO
@@ -243,6 +244,7 @@ class Monster():
             print "waiting for I/O..."
             time.sleep(1)
         print "ok, we're outta here"
+        os.killpg(0, signal.SIGKILL)
 
     def sayhi(self, sleep_s=0.5, reps=5):
         for i in xrange(reps):
@@ -263,6 +265,7 @@ if __name__ == "__main__":
         print '\n'.join(['  - ' + c for c in commands])
         sys.exit(1)
     cmd = sys.argv[1]
+    os.setpgrp()
     with Monster() as monster:
         if len(sys.argv) > 2:
             getattr(monster, cmd)(*sys.argv[2:])
