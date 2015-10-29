@@ -92,16 +92,15 @@ class Monster():
                 self._i2c_bus.write_byte(Monster.SERVO_I2C_ADDR, cmd)
                 return
             except IOError:
-                print "i2c bus contention..."
                 time.sleep(.5)
                 pass
-        print "Couldn't send command:", cmd
+        print "I2C Contention! Couldn't send command:", cmd
 
-    def close_door(self, max_iters=3):
-        self.i2c_write(Monster.SERVO_CMD_CLOSE, max_iters)
+    def close_door(self):
+        self.i2c_write(Monster.SERVO_CMD_CLOSE, 5)
 
-    def open_door(self, max_iters=3):
-        self.i2c_write(Monster.SERVO_CMD_OPEN, max_iters)
+    def open_door(self):
+        self.i2c_write(Monster.SERVO_CMD_OPEN, 5)
 
     def toggle_door(self, time_open=.8):
         self.open_door()
