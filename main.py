@@ -24,31 +24,6 @@ def loop_sound(snd):
                       os.path.join(SOUND_DIR, snd)])
 
 
-class RefCount(object):
-    def __init__(self):
-        self._cnt = 0
-        self._lock = threading.Lock()
-
-    def __enter__(self):
-        self.inc()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.dec()
-
-    def inc(self):
-        with self._lock:
-            self._cnt += 1
-
-    def dec(self):
-        with self._lock:
-            self._cnt -= 1
-
-    def cnt(self):
-        with self._lock:
-            return self._cnt
-
-
 class Monster():
     """Monster class.  Should only be used with a context manager!
 
@@ -74,7 +49,6 @@ class Monster():
         self._rangefinder_settled = False
         self._distance_lock = threading.Lock()
         self._distance = 999999999
-        self._io_refcnt = RefCount()
 
     def __enter__(self):
         PWM.set_loglevel(PWM.LOG_LEVEL_ERRORS)
@@ -127,30 +101,12 @@ class Monster():
         time.sleep(time_open)
         self.close_door()
 
-    def fire_ball_drop_cnt(self):
-        self.fire_ball()
-        self._io_refcnt.dec()
-
-    def toggle_door_drop_cnt(self):
-        self.toggle_door()
-        self._io_refcnt.dec()
-
     def ball_and_door(self):
-        ball_thread = threading.Thread(target=self.fire_ball_drop_cnt)
-        door_thread = threading.Thread(target=self.toggle_door_drop_cnt)
-
-        # two threads will have outstanding I/O.  Need two refcounts.  The
-        # counts will be dropped when the threads are done with their work.
-        # There must be a cleaner way of doing this but, I'm tired...
-        self._io_refcnt.inc()
-        self._io_refcnt.inc()
-
-        door_thread.start()
-        time.sleep(.5)
-        ball_thread.start()
-
-        ball_thread.join()
-        door_thread.join()
+        self.twitch_door()
+        time.sleep(1)
+        self.fire_ball()
+        time.sleep(1)
+        self.fire_ball()
 
     # based on http://www.modmypi.com/blog/hc-sr04-ultrasonic-range-sensor-on-the-raspberry-pi
     def measure_distance(self):
@@ -244,10 +200,6 @@ class Monster():
         self._keep_watching = False
         print 'waiting for threads to exit...'
         dist_thread.join()
-        print 'waiting for any outstanding I/O...'
-        while self._io_refcnt.cnt() > 0:
-            print "waiting for I/O..."
-            time.sleep(1)
         print "ok, we're outta here"
         os.killpg(0, signal.SIGKILL)
 
