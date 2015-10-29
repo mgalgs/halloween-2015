@@ -15,6 +15,7 @@
 
 #define SERVO_CMD_OPEN 1
 #define SERVO_CMD_CLOSE 2
+#define SERVO_CMD_TWITCH 3
 
 
 static void led_init(void)
@@ -155,6 +156,12 @@ static void process_data(uint8_t data)
         servo_set_degrees(180);
         blinken(20);
         sitfor(50);
+        break;
+    case SERVO_CMD_TWITCH:
+        servo_set_degrees(155);
+        sitfor(4);
+        servo_set_degrees(180);
+        blinken(5);
         break;
     default:
         blinken(100);

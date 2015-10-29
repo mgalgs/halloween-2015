@@ -57,8 +57,10 @@ class Monster():
 
     I2C_BUS_NUM = 0
     SERVO_I2C_ADDR = 0xa
+
     SERVO_CMD_OPEN = 1
     SERVO_CMD_CLOSE = 2
+    SERVO_CMD_TWITCH = 3
 
     DISTANCE_UPDATE_SECONDS = .2
 
@@ -116,6 +118,9 @@ class Monster():
 
     def open_door(self):
         self.i2c_write(Monster.SERVO_CMD_OPEN, 10)
+
+    def twitch_door(self):
+        self.i2c_write(Monster.SERVO_CMD_TWITCH, 10)
 
     def toggle_door(self, time_open=.8):
         self.open_door()
@@ -255,7 +260,8 @@ class Monster():
 
 
 if __name__ == "__main__":
-    commands = ['sayhi', 'close_door', 'open_door', 'toggle_door', 'fire_ball',
+    commands = ['sayhi', 'close_door', 'open_door', 'toggle_door',
+                'twitch_door', 'fire_ball',
                 'ball_and_door', 'print_distance', 'monitor_distance',
                 'monster_loop']
     if len(sys.argv) < 2 or sys.argv[1] not in commands:
