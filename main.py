@@ -196,7 +196,7 @@ class Monster():
             time.sleep(Monster.DISTANCE_UPDATE_SECONDS)
         print 'done watching distance'
 
-    def monster_loop(self, iters=None, trigger_threshold_meters=.3):
+    def monster_loop(self, iters=0, trigger_threshold_meters=.3):
         iters = int(iters)
         print 'running', iters if iters is not None else 'unlimited', 'iters'
         self._keep_watching = True
@@ -211,7 +211,7 @@ class Monster():
                     self.ball_and_door()
                 time.sleep(1)
                 cnt += 1
-                if iters is not None and cnt > iters:
+                if iters > 0 and cnt > iters:
                     break
         except KeyboardInterrupt:
             print "Interrupt received. Exiting loop."
