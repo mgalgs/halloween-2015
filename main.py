@@ -4,12 +4,26 @@ import sys
 import time
 import threading
 import subprocess
+import os
+
 from RPIO import PWM
 import RPIO as GPIO
 from smbus import SMBus
 
+# I apologize for all the shelling.  I actually was using pyglet at first
+# but it was cutting out unreliably...
+SOUND_DIR = '/root/sounds'
 
-class RefCount():
+def play_sound(snd):
+    subprocess.Popen(['mpg123', '-q',
+                      os.path.join(SOUND_DIR, snd)])
+
+def loop_sound(snd):
+    subprocess.Popen(['mpg123', '-q', '--loop', '-1',
+                      os.path.join(SOUND_DIR, snd)])
+
+
+class RefCount(object):
     def __init__(self):
         self._cnt = 0
         self._lock = threading.Lock()
@@ -200,6 +214,7 @@ class Monster():
 
     def monster_loop(self, iters=0, trigger_threshold_meters=.3):
         iters = int(iters)
+        loop_sound('background.mp3')
         print 'running', iters if iters is not None else 'unlimited', 'iters'
         self._keep_watching = True
         dist_thread = threading.Thread(target=self.watch_distance)
@@ -209,9 +224,12 @@ class Monster():
             while True:
                 distance = self.get_distance()
                 if distance < trigger_threshold_meters:
+                    play_sound('vocal-leave-now-happy-halloween.mp3')
+                    time.sleep(1)
                     print 'FIRE!'
                     self.ball_and_door()
-                time.sleep(1)
+                    time.sleep(10)
+                time.sleep(.5)
                 cnt += 1
                 if iters > 0 and cnt > iters:
                     break
