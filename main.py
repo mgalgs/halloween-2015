@@ -126,13 +126,21 @@ class Monster():
         GPIO.output(self._gpios['echo_trigger'], False)
         # interrupt might be better?
         pulse_start = time.time()
+        cnt = 0
         while not GPIO.input(self._gpios['echo']):
             pulse_start = time.time() # maybe pass would be better? might actually more cpu though...
+            cnt += 1
+            if cnt > 20000:
+                return 999999999
         # we got a pulse, measure it's width by polling until it goes low
         # again.
+        cnt = 0
         pulse_end = time.time()
         while GPIO.input(self._gpios['echo']):
             pulse_end = time.time()
+            cnt += 1
+            if cnt > 20000:
+                return 999999999
 
         pulse_duration = pulse_end - pulse_start
         sound_mps = 343.0         # speed of sound: 343 m/s
