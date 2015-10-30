@@ -190,9 +190,12 @@ class Monster():
         dist_thread.start()
         try:
             last_come_closer = 0
+            distances = [0, 0, 0] # simple moving average...
             while True:
-                distance = self.get_distance()
-                print 'distance:', distance
+                distances.insert(0, self.get_distance())
+                distances.pop()
+                distance = sum(distances) / 3.0
+                print 'distances, distance:', distances, distance
                 if distance < come_closer_meters and \
                    distance > trigger_threshold_meters and \
                    time.time() - last_come_closer > 12:
