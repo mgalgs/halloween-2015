@@ -211,6 +211,8 @@ class Monster():
                 time.sleep(.3)
         except KeyboardInterrupt:
             print "Interrupt received. Exiting loop."
+        except SystemExit:
+            print "Exiting loop."
         self._keep_watching = False
         print 'waiting for threads to exit...'
         dist_thread.join()
@@ -222,6 +224,11 @@ class Monster():
             time.sleep(sleep_s)
             self.close_door()
             time.sleep(sleep_s)
+
+
+def sigterm_handler(signal, frame):
+    print 'Got SIGTERM, terminating...'
+    sys.exit(0)
 
 
 if __name__ == "__main__":
@@ -236,11 +243,18 @@ if __name__ == "__main__":
         print '\n'.join(['  - ' + c for c in commands])
         sys.exit(1)
     cmd = sys.argv[1]
-    os.setpgrp()
+    try:
+        os.setpgrp()
+    except:
+        pass # doesn't work when running under systemd
+    signal.signal(signal.SIGTERM, sigterm_handler)
     with Monster() as monster:
         if len(sys.argv) > 2:
             getattr(monster, cmd)(*sys.argv[2:])
         else:
             getattr(monster, cmd)()
 
-    os.killpg(0, signal.SIGKILL)
+    try:
+        os.killpg(0, signal.SIGKILL)
+    except:
+        pass # ditto

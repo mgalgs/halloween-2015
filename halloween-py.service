@@ -1,0 +1,8 @@
+[Unit]
+Description=halloween py
+
+[Service]
+ExecStart=/root/venv/default/bin/python /root/main.py monster_loop
+
+[Install]
+WantedBy=multi-user.target
