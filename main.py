@@ -182,34 +182,36 @@ class Monster():
             time.sleep(Monster.DISTANCE_UPDATE_SECONDS)
         print 'done watching distance'
 
-    def monster_loop(self, iters=0, trigger_threshold_meters=.3):
-        iters = int(iters)
+    def monster_loop(self, trigger_threshold_meters=1.0,
+                     come_closer_meters=2.0):
         loop_sound('background.mp3')
-        print 'running', iters if iters is not None else 'unlimited', 'iters'
         self._keep_watching = True
         dist_thread = threading.Thread(target=self.watch_distance)
         dist_thread.start()
         try:
-            cnt = 0
+            last_come_closer = 0
             while True:
                 distance = self.get_distance()
-                if distance < trigger_threshold_meters:
+                print 'distance:', distance
+                if distance < come_closer_meters and \
+                   distance > trigger_threshold_meters and \
+                   time.time() - last_come_closer > 12:
+                    print 'come closer...'
+                    play_sound('come-closer.mp3')
+                    last_come_closer = time.time()
+                elif distance < trigger_threshold_meters:
                     play_sound('vocal-leave-now-happy-halloween.mp3')
                     time.sleep(1)
                     print 'FIRE!'
                     self.ball_and_door()
                     time.sleep(10)
-                time.sleep(.5)
-                cnt += 1
-                if iters > 0 and cnt > iters:
-                    break
+                time.sleep(.3)
         except KeyboardInterrupt:
             print "Interrupt received. Exiting loop."
         self._keep_watching = False
         print 'waiting for threads to exit...'
         dist_thread.join()
         print "ok, we're outta here"
-        os.killpg(0, signal.SIGKILL)
 
     def sayhi(self, sleep_s=0.5, reps=5):
         for i in xrange(reps):
@@ -238,4 +240,4 @@ if __name__ == "__main__":
         else:
             getattr(monster, cmd)()
 
-    time.sleep(1)
+    os.killpg(0, signal.SIGKILL)
